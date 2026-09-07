@@ -1424,12 +1424,12 @@ namespace std
 
 		path absolute(const path& p, std::error_code& /*err*/)
 		{
-			return absolute(p);
+			return std::filesystem::absolute(p);
 		}
 
 		path canonical(const path& p, std::error_code* err)
 		{
-			path source(p.is_absolute() ? p : absolute(p));
+			path source(p.is_absolute() ? p : std::filesystem::absolute(p));
 			path root(source.root_path());
 			path result;
 
@@ -1515,6 +1515,31 @@ namespace std
 			return err_val != 0;
 		}
 
+		namespace fs = std::experimental::filesystem::v1;
+
+		fs::path normalize_path(const fs::path& p)
+		{
+			std::vector<fs::path> parts;
+			for (const auto& part : p) {
+				if (part == ".") continue;
+				if (part == "..") {
+					if (!parts.empty()) parts.pop_back();
+					else parts.push_back(".."); // 保留根上的 ..
+				}
+				else {
+					parts.push_back(part);
+				}
+			}
+			fs::path result;
+			for (const auto& part : parts) {
+				result /= part;
+			}
+			// 保留根名称（如 C:）和根目录（如 /）
+			if (p.has_root_name()) result = p.root_name() / result;
+			if (p.has_root_directory()) result = p.root_directory() / result;
+			return result;
+		}
+
 		path weakly_canonical(const path& p, std::error_code* err)
 		{
 			path head{ p };
@@ -1551,14 +1576,14 @@ namespace std
 			}
 
 			if (head.empty())
-				return p.lexically_normal();
-			head = canonical(head, tmp_err);
+				return normalize_path(p);
+			head = std::experimental::filesystem::v1::canonical(head, tmp_err);
 			if (try_throw(tmp_err.value(), head, err, "nana::filesystem::weakly_canonical"))
 				return path();
 			return tail.empty()
 				? head
 				: (tail_has_dots  // optimization: only normalize if tail had dot or dot-dot element
-				? (head / tail).lexically_normal()
+				? normalize_path((head / tail))
 				: head / tail);
 		}
 
