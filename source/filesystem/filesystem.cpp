@@ -1523,7 +1523,7 @@ namespace std
 			for (const auto& part : p) {
 				if (part == ".") continue;
 				if (part == "..") {
-					if (!parts.empty()) parts.pop_back();
+					if (!parts.empty() && parts.back() != "..") parts.pop_back();
 					else parts.push_back(".."); // 保留根上的 ..
 				}
 				else {
@@ -1537,6 +1537,7 @@ namespace std
 			// 保留根名称（如 C:）和根目录（如 /）
 			if (p.has_root_name()) result = p.root_name() / result;
 			if (p.has_root_directory()) result = p.root_directory() / result;
+			if (result.empty()) result = ".";
 			return result;
 		}
 
